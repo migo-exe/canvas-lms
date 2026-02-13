@@ -1,38 +1,38 @@
-# See doc/docker/README.md or https://github.com/instructure/canvas-lms/tree/master/doc/docker
 version: '3.8'
 
 services:
-  # Base de Datos (PostgreSQL)
   db:
     image: postgres:12
     environment:
-      - POSTGRES_PASSWORD=canvas_secure_pass
-      - POSTGRES_USER=canvas
-      - POSTGRES_DB=canvas_production
+      - POSTGRES_PASSWORD=canvas_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=canvas # Cambiado a 'canvas' para coincidir con lo que busca la app
     volumes:
       - canvas_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U canvas"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  # Caché y Jobs (Redis)
   redis:
     image: redis:6-alpine
     volumes:
       - canvas_redis_data:/data
 
-  # Aplicación Principal (Web)
   web:
-    build: .
-    command: bash -c "bundle exec rails server -b 0.0.0.0"
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    # Este comando fuerza la creación de la DB si no existe antes de lanzar el server
+    command: >
+      bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
     environment:
       - RAILS_ENV=production
-      - DATABASE_URL=postgres://canvas:canvas_secure_pass@db/canvas_production
+      - DATABASE_URL=postgres://postgres:canvas_password@db/canvas
       - REDIS_URL=redis://redis:6379/0
-      - CANVAS_ENCRYPTION_KEY=una_clave_muy_larga_de_al_menos_20_caracteres
-      - ECOSYSTEM_KEY=otra_clave_aleatoria_larga
+      - CANVAS_ENCRYPTION_KEY=sustituye_con_32_caracteres_minimo
+      - ECOSYSTEM_KEY=sustituye_con_32_caracteres_minimo
     ports:
       - "3000"
     depends_on:
@@ -41,22 +41,7 @@ services:
       redis:
         condition: service_started
 
-  # Contenedor de Inicialización (Este hace el trabajo sucio por ti)
-  setup:
-    build: .
-    environment:
-      - RAILS_ENV=production
-      - DATABASE_URL=postgres://canvas:canvas_secure_pass@db/canvas_production
-    # Este comando intenta migrar; si falla porque no hay tablas, ejecuta el setup inicial
-    command: bash -c "bundle exec rake db:migrate || bundle exec rake db:initial_setup"
-    depends_on:
-      db:
-        condition: service_healthy
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-
 volumes:
   canvas_db_data:
   canvas_redis_data:
+acp-wuct-iqy
