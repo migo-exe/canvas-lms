@@ -8,19 +8,32 @@ services:
       - POSTGRES_DB=canvas
     volumes:
       - canvas_db_data:/var/lib/postgresql/data
+    # Salud: Evita que la web intente conectar antes de que la DB esté lista
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:6-alpine
+
   web:
     build: .
+    # Agregamos las llaves obligatorias y la URL de la DB aquí mismo
     environment:
       - RAILS_ENV=production
       - DATABASE_URL=postgres://postgres:canvas_password@db/canvas
       - REDIS_URL=redis://redis:6379/0
+      - CANVAS_ENCRYPTION_KEY=786f74617265616c6b6579646f6e74757365746869733132
+      - ECOSYSTEM_KEY=616e6f7468657266616b656b65796a757374666f7264656d6f31
     ports:
       - "3000:3000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   canvas_db_data:
