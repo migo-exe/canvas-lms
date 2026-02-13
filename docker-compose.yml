@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3'
 
 services:
   db:
@@ -6,7 +6,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=canvas_password
       - POSTGRES_USER=postgres
-      - POSTGRES_DB=canvas # Cambiado a 'canvas' para coincidir con lo que busca la app
+      - POSTGRES_DB=canvas
     volumes:
       - canvas_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,31 +17,23 @@ services:
 
   redis:
     image: redis:6-alpine
-    volumes:
-      - canvas_redis_data:/data
 
   web:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    # Este comando fuerza la creación de la DB si no existe antes de lanzar el server
-    command: >
-      bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
+    command: bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
     environment:
       - RAILS_ENV=production
       - DATABASE_URL=postgres://postgres:canvas_password@db/canvas
       - REDIS_URL=redis://redis:6379/0
-      - CANVAS_ENCRYPTION_KEY=sustituye_con_32_caracteres_minimo
-      - ECOSYSTEM_KEY=sustituye_con_32_caracteres_minimo
+      - CANVAS_ENCRYPTION_KEY=genera_una_clave_de_32_caracteres_aqui
+      - ECOSYSTEM_KEY=genera_otra_clave_de_32_caracteres_aqui
     ports:
-      - "3000"
+      - "3000:3000"
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - db
+      - redis
 
 volumes:
   canvas_db_data:
-  canvas_redis_data:
-acp-wuct-iqy
