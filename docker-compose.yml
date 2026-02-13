@@ -3,44 +3,24 @@ services:
   db:
     image: postgres:12
     environment:
-      POSTGRES_PASSWORD: canvas_password
-      POSTGRES_USER: postgres
-      POSTGRES_DB: canvas
+      - POSTGRES_PASSWORD=canvas_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=canvas
     volumes:
       - canvas_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:6-alpine
-
   web:
     build: .
-    # Esta es la "magia" para Coolify: genera los archivos y luego inicia
-    command: >
-      bash -c "
-      cd /usr/src/app/config &&
-      printf 'production:\n  adapter: postgresql\n  database: canvas\n  host: db\n  username: postgres\n  password: canvas_password\n  encoding: utf8' > database.yml &&
-      printf 'production:\n  domain: localhost\n  ssl: false' > domain.yml &&
-      printf 'production:\n  encryption_key: $CANVAS_ENCRYPTION_KEY' > security.yml &&
-      cd /usr/src/app &&
-      (bundle exec rake db:migrate || bundle exec rake db:initial_setup) &&
-      bundle exec rails server -b 0.0.0.0"
     environment:
-      RAILS_ENV: production
-      CANVAS_ENCRYPTION_KEY: "786f74617265616c6b6579646f6e7475736574686973313233"
-      ECOSYSTEM_KEY: "616e6f7468657266616b656b65796a757374666f7264656d6f31"
+      - RAILS_ENV=production
+      - DATABASE_URL=postgres://postgres:canvas_password@db/canvas
+      - REDIS_URL=redis://redis:6379/0
     ports:
       - "3000:3000"
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - db
+      - redis
 
 volumes:
   canvas_db_data:
-acp-wuct-iqy
