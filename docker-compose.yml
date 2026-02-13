@@ -1,16 +1,16 @@
-version: '3'
+version: '3.8'
 
 services:
   db:
     image: postgres:12
     environment:
-      - POSTGRES_PASSWORD=canvas_password
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=canvas
+      - POSTGRES_PASSWORD=canvas_pass
+      - POSTGRES_USER=canvas_user
+      - POSTGRES_DB=canvas_production
     volumes:
-      - canvas_db_data:/var/lib/postgresql/data
+      - canvas_db_data_v2:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U canvas_user -d canvas_production"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,18 +22,64 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
+    # El comando primero entra a la carpeta correcta, luego intenta preparar todo
+    working_dir: /usr/src/app
+    command: >
+      bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
     environment:
       - RAILS_ENV=production
-      - DATABASE_URL=postgres://postgres:canvas_password@db/canvas
+      - DATABASE_URL=postgres://canvas_user:canvas_pass@db/canvas_production
       - REDIS_URL=redis://redis:6379/0
-      - CANVAS_ENCRYPTION_KEY=genera_una_clave_de_32_caracteres_aqui
-      - ECOSYSTEM_KEY=genera_otra_clave_de_32_caracteres_aqui
+      - CANVAS_ENCRYPTION_KEY=6e6f74617265616c6b6579646f6e7475736574686973313233
+      - ECOSYSTEM_KEY=616e6f7468657266616b656b65796a757374666f7264656d6f3132
     ports:
-      - "3000:3000"
+      - "3000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
 
 volumes:
-  canvas_db_data:
+  canvas_db_data_v2:
+version: '3.8'
+
+services:
+  db:
+    image: postgres:12
+    environment:
+      - POSTGRES_PASSWORD=canvas_pass
+      - POSTGRES_USER=canvas_user
+      - POSTGRES_DB=canvas_production
+    volumes:
+      - canvas_db_data_v2:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U canvas_user -d canvas_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6-alpine
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # El comando primero entra a la carpeta correcta, luego intenta preparar todo
+    working_dir: /usr/src/app
+    command: >
+      bash -c "bundle exec rake db:create db:initial_setup || bundle exec rails server -b 0.0.0.0"
+    environment:
+      - RAILS_ENV=production
+      - DATABASE_URL=postgres://canvas_user:canvas_pass@db/canvas_production
+      - REDIS_URL=redis://redis:6379/0
+      - CANVAS_ENCRYPTION_KEY=6e6f74617265616c6b6579646f6e7475736574686973313233
+      - ECOSYSTEM_KEY=616e6f7468657266616b656b65796a757374666f7264656d6f3132
+    ports:
+      - "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  canvas_db_data_v2:
+acp-wuct-iqy
